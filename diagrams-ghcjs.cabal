@@ -1,0 +1,32 @@
+Name:                diagrams-ghcjs
+Version:             0.1
+Synopsis:            GHCJS backend for diagrams drawing EDSL
+Description:         This package provides a backend for rendering
+                     diagrams directly to an HTML 5 canvas
+                     from JavaScript
+Homepage:            http://projects.haskell.org/diagrams/
+License:             BSD3
+License-file:        LICENSE
+Author:              Ryan Yates, Luite Stegeman
+Maintainer:          stegeman@gmail.com
+Stability:           Experimental
+Category:            Graphics
+Build-type:          Simple
+Cabal-version:       >=1.8
+Source-repository head
+  type:     git
+  location: https://github.com/ghcjs/diagrams-ghcjs.git
+
+Library
+  Exposed-modules:     Diagrams.Backend.GHCJS
+                       Graphics.Rendering.GHCJS
+  Hs-source-dirs:      src
+  Build-depends:       base >= 4.6 && < 4.8,
+                       mtl >= 2.0 && < 3.0,
+                       vector-space >= 0.8 && < 0.9,
+                       NumInstances >= 1.2 && < 1.3,
+                       diagrams-core >= 0.6 && < 0.7,
+                       diagrams-lib >= 0.6 && < 0.7,
+                       colour >= 2.3 && < 2.4,
+                       ghcjs-base,
+                       ghcjs-canvas
