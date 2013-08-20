@@ -17,12 +17,13 @@ import           Control.Monad (when)
 import qualified Data.Foldable as F
 import           Data.Maybe (catMaybes)
 import           Data.Typeable
+import           Control.Monad.Reader
 
 import           Diagrams.Prelude
 import           Diagrams.TwoD.Adjust (adjustDia2D)
+import           Diagrams.Segment
 
 import qualified Graphics.Rendering.GHCJS as G
-import           Control.Monad.Reader
 
 -- | This data declaration is simply used as a token to distinguish this rendering engine.
 data Canvas = Canvas
@@ -76,21 +77,20 @@ canvasTransf t = G.transform a1 a2 b1 b2 c1 c2
         (unr2 -> (b1,b2)) = apply t unitY
         (unr2 -> (c1,c2)) = transl t
 
-instance Renderable (Segment R2) Canvas where
-  render _ (Linear v) = C $ uncurry G.relLineTo (unr2 v)
+instance Renderable (Segment Closed R2) Canvas where
+  render _ (Linear (OffsetClosed v)) = C $ uncurry G.relLineTo (unr2 v)
   render _ (Cubic (unr2 -> (x1,y1))
                   (unr2 -> (x2,y2))
-                  (unr2 -> (x3,y3)))
+                  (OffsetClosed (unr2 -> (x3,y3))))
     = C $ G.relCurveTo x1 y1 x2 y2 x3 y3
 
 instance Renderable (Trail R2) Canvas where
-  render _ (Trail segs c) = C $ do
-    mapM_ renderC segs
-    when c $ G.closePath
+  render c = render c . pathFromTrail
 
 instance Renderable (Path R2) Canvas where
   render _ (Path trs) = C $ G.newPath >> F.mapM_ renderTrail trs
-    where renderTrail (unp2 -> p, tr) = do
-            uncurry G.moveTo p
-            renderC tr
 
+renderTrail :: Located (Trail R2) -> Render Canvas ()
+renderTrail (viewLoc -> (unp2 -> (x,y), t)) = do
+    G.moveTo x y
+    renderC t

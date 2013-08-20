@@ -154,4 +154,3 @@ withStyle t s r = do
   ctx C.fill
   ctx C.restore
 
-
