@@ -5,10 +5,11 @@
            , TypeSynonymInstances
            , DeriveDataTypeable
            , ViewPatterns
+           , TypeHoles
+           , InstanceSigs
   #-}
 
 module Diagrams.Backend.GHCJS
-
   ( Canvas(..)
   , Options(..)
   ) where
@@ -24,6 +25,8 @@ import           Diagrams.TwoD.Adjust (adjustDia2D)
 import           Diagrams.Segment
 
 import qualified Graphics.Rendering.GHCJS as G
+
+import Debug.Trace
 
 -- | This data declaration is simply used as a token to distinguish this rendering engine.
 data Canvas = Canvas
@@ -41,7 +44,7 @@ instance Backend Canvas R2 where
           , context      :: G.Context    -- ^ drawing context to render to
           }
 
-  withStyle _ s t (C r) = C $ do
+  withStyle _ s t (C r) = C $ 
     G.withStyle (canvasTransf t) (canvasStyle s) r
 
   doRender _ (CanvasOptions _ c) (C r) = G.doRender c r
@@ -72,25 +75,33 @@ canvasStyle s = foldr (>>) (return ())
         opacity_ = G.globalAlpha . getOpacity
 
 canvasTransf :: Transformation R2 -> G.Render ()
-canvasTransf t = G.transform a1 a2 b1 b2 c1 c2
+canvasTransf t = do
+    traceM $ show (a1,a2,b1,b2,c1,c2)
+    G.transform a1 a2 b1 b2 c1 c2
   where (unr2 -> (a1,a2)) = apply t unitX
         (unr2 -> (b1,b2)) = apply t unitY
         (unr2 -> (c1,c2)) = transl t
 
 instance Renderable (Segment Closed R2) Canvas where
-  render _ (Linear (OffsetClosed v)) = C $ uncurry G.relLineTo (unr2 v)
+  render _ (Linear (OffsetClosed v)) = C $ 
+      uncurry G.relLineTo (unr2 v)
   render _ (Cubic (unr2 -> (x1,y1))
                   (unr2 -> (x2,y2))
                   (OffsetClosed (unr2 -> (x3,y3))))
     = C $ G.relCurveTo x1 y1 x2 y2 x3 y3
 
 instance Renderable (Trail R2) Canvas where
-  render c = render c . pathFromTrail
-
+    render :: Canvas -> (Trail R2) -> Render Canvas (V (Trail R2))
+    render c = render c . pathFromTrail
+        
 instance Renderable (Path R2) Canvas where
-  render _ (Path trs) = C $ G.newPath >> F.mapM_ renderTrail trs
-
-renderTrail :: Located (Trail R2) -> Render Canvas ()
+  render _ (Path trs) = C $ 
+      G.newPath >> F.mapM_ renderTrail trs
+      
+renderTrail :: Located (Trail R2) -> G.Render ()
 renderTrail (viewLoc -> (unp2 -> (x,y), t)) = do
     G.moveTo x y
-    renderC t
+    mapM_ renderC (trailSegments t)
+    if isLoop t
+       then G.closePath
+       else return ()
