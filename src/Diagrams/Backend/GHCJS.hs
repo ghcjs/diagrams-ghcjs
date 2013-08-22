@@ -22,6 +22,7 @@ import           Control.Monad.Reader
 
 import           Diagrams.Prelude
 import           Diagrams.TwoD.Adjust (adjustDia2D)
+import           Diagrams.TwoD.Path   (getFillRule, getClip)
 import           Diagrams.Segment
 
 import qualified Graphics.Rendering.GHCJS as G
@@ -64,6 +65,9 @@ canvasStyle s = foldr (>>) (return ())
                             , handle lJoin
                             , handle lCap
                             , handle opacity_
+                            , handle fRule
+                            , handle dashing_
+                            -- , handle font*
                             ]
   where handle :: (AttributeClass a) => (a -> G.Render ()) -> Maybe (G.Render ())
         handle f = f `fmap` getAttr s
@@ -73,6 +77,9 @@ canvasStyle s = foldr (>>) (return ())
         lCap     = G.lineCap     . getLineCap
         lJoin    = G.lineJoin    . getLineJoin
         opacity_ = G.globalAlpha . getOpacity
+        fRule    = nothing       . getFillRule
+        dashing_ = G.dashing     . getDashing
+        nothing  = const (return ())
 
 canvasTransf :: Transformation R2 -> G.Render ()
 canvasTransf t = do
@@ -83,12 +90,7 @@ canvasTransf t = do
         (unr2 -> (c1,c2)) = transl t
 
 instance Renderable (Segment Closed R2) Canvas where
-  render _ (Linear (OffsetClosed v)) = C $ 
-      uncurry G.relLineTo (unr2 v)
-  render _ (Cubic (unr2 -> (x1,y1))
-                  (unr2 -> (x2,y2))
-                  (OffsetClosed (unr2 -> (x3,y3))))
-    = C $ G.relCurveTo x1 y1 x2 y2 x3 y3
+  render _ seg = C $ renderSeg seg
 
 instance Renderable (Trail R2) Canvas where
     render :: Canvas -> (Trail R2) -> Render Canvas (V (Trail R2))
@@ -105,3 +107,10 @@ renderTrail (viewLoc -> (unp2 -> (x,y), t)) = do
     if isLoop t
        then G.closePath
        else return ()
+
+renderSeg :: Segment Closed R2 -> G.Render ()
+renderSeg (Linear (OffsetClosed v)) = uncurry G.relLineTo (unr2 v)
+renderSeg (Cubic (unr2 -> (x1,y1))
+                  (unr2 -> (x2,y2))
+                  (OffsetClosed (unr2 -> (x3,y3))))
+    = G.relCurveTo x1 y1 x2 y2 x3 y3

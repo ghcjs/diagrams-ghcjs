@@ -18,6 +18,7 @@ module Graphics.Rendering.GHCJS
   , scale
   , rotate
   , strokeColor
+  , dashing
   , fillColor
   , lineWidth
   , lineCap
@@ -26,15 +27,17 @@ module Graphics.Rendering.GHCJS
   , withStyle
   ) where
 
-import           Data.Colour
-import           Data.Colour.SRGB.Linear
 import           Control.Monad.Reader
 import           Control.Monad.State
-import           Data.NumInstances ()
-import           Diagrams.Attributes (Color(..),colorToRGBA,LineCap(..),LineJoin(..))
+import           Data.Colour
+import           Data.Colour.SRGB.Linear
+import           Data.NumInstances       ()
+import           Diagrams.Attributes     (Color (..), Dashing (..),
+                                          LineCap (..), LineJoin (..),
+                                          colorToRGBA)
 
-import qualified JavaScript.Canvas as C
-import           JavaScript.Canvas (Context)
+import           JavaScript.Canvas       (Context)
+import qualified JavaScript.Canvas       as C
 
 type Render = StateT (Double,Double) (ReaderT Context IO)
 
@@ -91,7 +94,7 @@ restore = ctx C.restore
 
 colorToJSRGBA :: Color c => c -> (Int, Int, Int, Double)
 colorToJSRGBA c = (f r, f g, f b, alphaChannel c')
-  where 
+  where
    c'          = toAlphaColour c
    (RGB r g b) = toRGB (alphaToColour c')
    f = floor . transferFunction
@@ -115,6 +118,10 @@ strokeColor c = ctx (C.strokeStyle r g b a)
 fillColor :: (Color c) => c -> Render ()
 fillColor c = ctx (C.fillStyle r g b a)
   where (r,g,b,a) = colorToJSRGBA c
+
+dashing :: Dashing -> Render ()
+dashing (Dashing a o) =  ctx (C.setLineDash a)
+                      >> ctx (C.lineDashOffset o)
 
 lineWidth :: Double -> Render ()
 lineWidth w | abs w < 0.00001 = ctx (C.lineWidth 0.00001)
