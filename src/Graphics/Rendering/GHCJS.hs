@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Graphics.Rendering.GHCJS
   ( Render(..)
   , Context(..)
@@ -11,6 +12,8 @@ module Graphics.Rendering.GHCJS
   , closePath
   , stroke
   , fill
+  , fillText
+  , strokeText
   , transform
   , save
   , restore
@@ -18,6 +21,7 @@ module Graphics.Rendering.GHCJS
   , scale
   , rotate
   , strokeColor
+  , setFont
   , dashing
   , fillColor
   , lineWidth
@@ -32,6 +36,7 @@ import           Control.Monad.State
 import           Data.Colour
 import           Data.Colour.SRGB.Linear
 import           Data.NumInstances       ()
+import           Data.Text               (Text)
 import           Diagrams.Attributes     (Color (..), Dashing (..),
                                           LineCap (..), LineJoin (..),
                                           colorToRGBA)
@@ -80,6 +85,20 @@ relCurveTo ax ay bx by cx cy = do
   ctx (C.bezierCurveTo ax' ay' bx' by' cx' cy')
   move (cx',cy')
 
+fillText :: Text -> Render ()
+fillText txt = do
+    save
+    ctx (C.setTransform 1 0 0 1 0 0)
+    setFont "10px Arial"
+    (x,y) <- at
+    ctx (C.fillText txt x y)
+    restore
+
+strokeText :: Text -> Render ()
+strokeText txt = do
+    (x,y) <- at
+    ctx (C.strokeText txt x y)
+
 stroke :: Render ()
 stroke = ctx C.stroke
 
@@ -114,6 +133,9 @@ transform ax ay bx by tx ty = ctx (C.transform ax ay bx by tx ty)
 strokeColor :: (Color c) => c -> Render ()
 strokeColor c = ctx (C.strokeStyle r g b a)
   where (r,g,b,a) = colorToJSRGBA c
+
+setFont :: Text -> Render ()
+setFont f = ctx (C.font f)
 
 fillColor :: (Color c) => c -> Render ()
 fillColor c = ctx (C.fillStyle r g b a)
