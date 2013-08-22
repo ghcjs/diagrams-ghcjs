@@ -16,6 +16,8 @@ module Graphics.Rendering.GHCJS
   , setFill
   , getFill
   , fillRule
+  , fillText
+  , strokeText
   , transform
   , save
   , restore
@@ -23,6 +25,7 @@ module Graphics.Rendering.GHCJS
   , scale
   , rotate
   , strokeColor
+  , setFont
   , dashing
   , fillColor
   , lineWidth
@@ -38,10 +41,11 @@ import           Data.Colour
 import           Data.Colour.SRGB.Linear
 import           Data.NumInstances       ()
 import           Data.Maybe
+import           Data.Text               (Text)
 import           Diagrams.Attributes     (Color (..), Dashing (..),
                                           LineCap (..), LineJoin (..),
                                           colorToRGBA)
-import           Diagrams.TwoD.Path      (FillRule(..))    
+import           Diagrams.TwoD.Path      (FillRule(..))
 
 import           JavaScript.Canvas       (Context)
 import qualified JavaScript.Canvas       as C
@@ -102,6 +106,20 @@ relCurveTo ax ay bx by cx cy = do
   ctx (C.bezierCurveTo ax' ay' bx' by' cx' cy')
   move (cx',cy')
 
+fillText :: Text -> Render ()
+fillText txt = do
+    save
+    ctx (C.setTransform 1 0 0 1 0 0)
+    setFont "10px Arial"
+    (x,y) <- at
+    ctx (C.fillText txt x y)
+    restore
+
+strokeText :: Text -> Render ()
+strokeText txt = do
+    (x,y) <- at
+    ctx (C.strokeText txt x y)
+
 stroke :: Render ()
 stroke = ctx C.stroke
 
@@ -140,6 +158,9 @@ transform ax ay bx by tx ty = ctx (C.transform ax ay bx by tx ty)
 strokeColor :: (Color c) => c -> Render ()
 strokeColor c = ctx (C.strokeStyle r g b a)
   where (r,g,b,a) = colorToJSRGBA c
+
+setFont :: Text -> Render ()
+setFont f = ctx (C.font f)
 
 fillColor :: (Color c) => c -> Render ()
 fillColor c = ctx (C.fillStyle r g b a)

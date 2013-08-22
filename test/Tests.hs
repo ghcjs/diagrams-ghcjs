@@ -21,7 +21,7 @@ data Test = Test
         String -- ^ the name of the test
         (forall canvas .
                 ( Renderable (Path R2) canvas
---                , Renderable Text      canvas
+                , Renderable Text      canvas
                 , Backend canvas R2
                 ) => Diagram canvas R2
         ) -- ^ and the diagram
@@ -86,34 +86,34 @@ examples =
                   , dashing [0.1,0.2,0.3,0.1] 0
                   ]
 
-        -- , Test "text-basic" $
-        --        text "Hello world!" <> rect 8 1
+        , Test "text-basic" $
+               text "Hello world!" <> rect 8 1
 
-        -- , Test "text-alignment" $
-        --        let pt = circle 0.1 # fc red
+        , Test "text-alignment" $
+               let pt = circle 0.1 # fc red
 
-        --            t1 = pt <> topLeftText         "top left"   <> rect 8 1
-        --            t2 = pt <> baselineText        "baseline"   <> rect 8 1
-        --            t3 = pt <> alignedText 0.7 0.5 "(0.7, 0.5)" <> rect 8 1
+                   t1 = pt <> topLeftText         "top left"   <> rect 8 1
+                   t2 = pt <> baselineText        "baseline"   <> rect 8 1
+                   t3 = pt <> alignedText 0.7 0.5 "(0.7, 0.5)" <> rect 8 1
 
-        --            d1 =/= d2 = d1 === strutY 2 === d2
+                   d1 =/= d2 = d1 === strutY 2 === d2
 
-        --        in  t1 =/= t2 =/= t3
+               in  t1 =/= t2 =/= t3
 
-        -- , Test "text-attributes" $
-        --        let text' s t = text t # fontSize s <> strutY (s * 1.3)
-        --        in pad 1.1 . centerXY $
-        --             text' 10 "Hello" # italic
-        --             === text' 5 "there"  # bold # font "freeserif"
-        --             === text' 3 "world"  # fc green
+        , Test "text-attributes" $
+               let text' s t = text t # fontSize s <> strutY (s * 1.3)
+               in pad 1.1 . centerXY $
+                    text' 10 "Hello" # italic
+                    === text' 5 "there"  # bold # font "freeserif"
+                    === text' 3 "world"  # fc green
 
-        -- , Test "text-transforms" $
-        --        let eff = text "F" <> square 1 # lw 0
-        --            ts  = [ scale (1/2), id, scale 2, scaleX 2, scaleY 2
-        --                  , scale (-1), scaleX (-1), scaleY (-1)
-        --                  ]
+        , Test "text-transforms" $
+               let eff = text "F" <> square 1 # lw 0
+                   ts  = [ scale (1/2), id, scale 2, scaleX 2, scaleY 2
+                         , scale (-1), scaleX (-1), scaleY (-1)
+                         ]
 
-        --        in  pad 1.1 . hcat . map (eff #) $ ts
+               in  pad 1.1 . hcat . map (eff #) $ ts
 
         , Test "ring" $
                let ring :: Path R2
