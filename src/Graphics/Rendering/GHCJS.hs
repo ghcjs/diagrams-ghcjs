@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Graphics.Rendering.GHCJS
   ( Render(..)
   , Context(..)
@@ -12,6 +13,9 @@ module Graphics.Rendering.GHCJS
   , closePath
   , stroke
   , fill
+  , setFill
+  , getFill
+  , fillRule
   , transform
   , save
   , restore
@@ -33,27 +37,39 @@ import           Control.Monad.State
 import           Data.Colour
 import           Data.Colour.SRGB.Linear
 import           Data.NumInstances       ()
+import           Data.Maybe
 import           Diagrams.Attributes     (Color (..), Dashing (..),
                                           LineCap (..), LineJoin (..),
                                           colorToRGBA)
+import           Diagrams.TwoD.Path      (FillRule(..))    
 
 import           JavaScript.Canvas       (Context)
 import qualified JavaScript.Canvas       as C
 
 import Debug.Trace
 
-type Render = StateT (Double,Double) (ReaderT Context IO)
+type Render = StateT ((Double,Double), Maybe FillRule) (ReaderT Context IO)
 
 doRender :: Context -> Render a -> IO a
-doRender c r = runReaderT (evalStateT r (0,0)) c
+doRender c r = runReaderT (evalStateT r ((0,0), Nothing)) c
 
 ctx f = lift ask >>= liftIO . f
 
 move :: (Double,Double) -> Render ()
-move p = put p
+move p = do
+    (_, fr) <- get
+    put (p, fr)
 
 at :: Render (Double,Double)
-at = get
+at = fmap fst get
+
+getFill :: Render (Maybe FillRule)
+getFill = fmap snd get
+
+setFill :: FillRule -> Render ()
+setFill fr = do
+    (p, _) <- get
+    put (p, Just fr)
 
 newPath :: Render ()
 newPath = ctx C.beginPath
@@ -90,7 +106,11 @@ stroke :: Render ()
 stroke = ctx C.stroke
 
 fill :: Render ()
-fill = ctx C.fill
+fill = maybe (ctx C.fill) fillRule =<< getFill
+
+fillRule :: FillRule -> Render ()
+fillRule Winding = ctx (C.fillRule "nonzero")
+fillRule EvenOdd = ctx (C.fillRule "evenodd")
 
 save :: Render ()
 save = ctx C.save
@@ -163,7 +183,7 @@ withStyle :: Render () -> Render () -> Render () -> Render ()
 withStyle t s r = do
   ctx C.save
   r >> t >> s
-  ctx C.stroke
-  ctx C.fill
+  stroke
+  fill
   ctx C.restore
 

@@ -78,10 +78,9 @@ canvasStyle s = foldr (>>) (return ())
         lCap     = G.lineCap     . getLineCap
         lJoin    = G.lineJoin    . getLineJoin
         opacity_ = G.globalAlpha . getOpacity
-        fRule    = nothing       . getFillRule
+        fRule    = G.setFill     . getFillRule
         dashing_ = G.dashing     . getDashing
         clipping = clipCanv      . getClip
-        nothing  = const (return ())
 
 handleClipping :: Maybe Clip -> G.Render ()
 handleClipping Nothing  = return ()
