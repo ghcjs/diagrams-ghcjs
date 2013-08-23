@@ -8,6 +8,7 @@ module Graphics.Rendering.GHCJS
   , relLineTo
   , relCurveTo
   , arc
+  , clip
   , closePath
   , stroke
   , fill
@@ -39,6 +40,8 @@ import           Diagrams.Attributes     (Color (..), Dashing (..),
 import           JavaScript.Canvas       (Context)
 import qualified JavaScript.Canvas       as C
 
+import Debug.Trace
+
 type Render = StateT (Double,Double) (ReaderT Context IO)
 
 doRender :: Context -> Render a -> IO a
@@ -60,6 +63,9 @@ closePath = ctx C.closePath
 
 arc :: Double -> Double -> Double -> Double -> Double -> Render ()
 arc a b c d e = ctx (C.arc a b c d e True)
+
+clip :: Render ()
+clip = ctx (C.clip)
 
 moveTo :: Double -> Double -> Render ()
 moveTo x y = do

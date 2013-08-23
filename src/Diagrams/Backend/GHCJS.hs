@@ -22,7 +22,7 @@ import           Control.Monad.Reader
 
 import           Diagrams.Prelude
 import           Diagrams.TwoD.Adjust (adjustDia2D)
-import           Diagrams.TwoD.Path   (getFillRule, getClip)
+import           Diagrams.TwoD.Path   (getFillRule, Clip(..))
 import           Diagrams.Segment
 
 import qualified Graphics.Rendering.GHCJS as G
@@ -45,8 +45,9 @@ instance Backend Canvas R2 where
           , context      :: G.Context    -- ^ drawing context to render to
           }
 
-  withStyle _ s t (C r) = C $ 
-    G.withStyle (canvasTransf t) (canvasStyle s) r
+  withStyle _ s t (C r) = C $ do
+      handleClipping (getAttr s)
+      G.withStyle (canvasTransf t) (canvasStyle s) r
 
   doRender _ (CanvasOptions _ c) (C r) = G.doRender c r
 
@@ -79,8 +80,17 @@ canvasStyle s = foldr (>>) (return ())
         opacity_ = G.globalAlpha . getOpacity
         fRule    = nothing       . getFillRule
         dashing_ = G.dashing     . getDashing
+        clipping = clipCanv      . getClip
         nothing  = const (return ())
 
+handleClipping :: Maybe Clip -> G.Render ()
+handleClipping Nothing  = return ()
+handleClipping (Just c) = clipCanv (getClip c)
+
+clipCanv :: [Path R2] -> G.Render ()
+clipCanv pths = mapM_ renderP pths >> G.clip
+  where renderP (Path trs) = G.newPath >> F.mapM_ renderTrail trs
+        
 canvasTransf :: Transformation R2 -> G.Render ()
 canvasTransf t = do
     traceM $ show (a1,a2,b1,b2,c1,c2)

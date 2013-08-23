@@ -20,9 +20,11 @@ import Debug.Trace
 
 mkContext nm = do
     testarea <- select "#main"    
-    let img = "<img src=\"../ref/" <> nm <> ".png\" />"
-    let canvas = "<canvas id=\"" <> nm <> "\" width=\"200\" height=\"200\">"
-                    <> "</canvas><br />"
+    let img = "<img style=\"border:1px solid #d3d3d3;\" "
+              <> "src=\"../ref/" <> nm <> ".png\" />"
+    let canvas = "<canvas id=\"" <> nm <> "\" width=\"200\" height=\"200\""
+                 <> "style=\"border:1px solid #d3d3d3;\">"
+                 <> "</canvas><br />"
     append ("<tr><td valign=\"top\" bgcolor=\"#eeeeee\">"
             <> nm <> "</td>"
             <> "<td valign=\"top\">" <> img <> "</td>"
@@ -38,4 +40,5 @@ main = do
     forM_ examples $ \(Test testName dia) -> do
         ctx <- mkContext (T.pack testName)
         renderDia' ctx dia
+    putStrLn "end"
    

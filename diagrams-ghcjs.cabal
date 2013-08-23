@@ -1,5 +1,5 @@
 Name:                diagrams-ghcjs
-Version:             0.1
+Version:             0.1.1
 Synopsis:            GHCJS backend for diagrams drawing EDSL
 Description:         This package provides a backend for rendering
                      diagrams directly to an HTML 5 canvas
