@@ -179,11 +179,12 @@ scale x y = ctx (C.scale x y)
 rotate :: Double -> Render ()
 rotate t = ctx (C.rotate t)
 
-withStyle :: Render () -> Render () -> Render () -> Render ()
+withStyle :: Render () -> Render () -> Render Bool -> Render ()
 withStyle t s r = do
   ctx C.save
-  r >> t >> s
+  ignoreFill <- r
+  t >> s
   stroke
-  fill
+  unless ignoreFill fill
   ctx C.restore
 

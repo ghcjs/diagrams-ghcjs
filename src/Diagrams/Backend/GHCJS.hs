@@ -14,7 +14,7 @@ module Diagrams.Backend.GHCJS
   , Options(..)
   ) where
 
-import           Control.Monad (when)
+import           Control.Monad (when, void)
 import qualified Data.Foldable as F
 import           Data.Maybe (catMaybes)
 import           Data.Typeable
@@ -34,11 +34,16 @@ data Canvas = Canvas
     deriving Typeable
 
 instance Monoid (Render Canvas R2) where
-  mempty  = C $ return ()
+  mempty  = C $ return defRenderInfo
   (C c1) `mappend` (C c2) = C (c1 >> c2)
 
+data RenderInfo = I { getIgnoreFill :: Bool }
+
+defRenderInfo :: RenderInfo
+defRenderInfo = I False
+
 instance Backend Canvas R2 where
-  data Render  Canvas R2 = C (G.Render ())
+  data Render  Canvas R2 = C (G.Render RenderInfo)
   type Result  Canvas R2 = IO ()
   data Options Canvas R2 = CanvasOptions
           { canvasSize   :: SizeSpec2D   -- ^ the requested size
@@ -47,15 +52,17 @@ instance Backend Canvas R2 where
 
   withStyle _ s t (C r) = C $ do
       handleClipping (getAttr s)
-      G.withStyle (canvasTransf t) (canvasStyle s) r
-
-  doRender _ (CanvasOptions _ c) (C r) = G.doRender c r
+      let r' = fmap getIgnoreFill r :: G.Render Bool
+      G.withStyle (canvasTransf t) (canvasStyle s) r'
+      return defRenderInfo
+      
+  doRender _ (CanvasOptions _ c) (C r) = void $ G.doRender c r
 
   adjustDia c opts d = adjustDia2D canvasSize setCanvasSize c opts
                        (d # reflectY # fcA transparent # lw 0.01)
     where setCanvasSize sz o = o { canvasSize = sz }
 
-renderC :: (Renderable a Canvas, V a ~ R2) => a -> G.Render ()
+renderC :: (Renderable a Canvas, V a ~ R2) => a -> G.Render RenderInfo
 renderC a = case (render Canvas a) of C r -> r
 
 canvasStyle :: Style v -> G.Render ()
@@ -87,8 +94,10 @@ handleClipping Nothing  = return ()
 handleClipping (Just c) = clipCanv (getClip c)
 
 clipCanv :: [Path R2] -> G.Render ()
-clipCanv pths = mapM_ renderP pths >> G.clip
-  where renderP (Path trs) = G.newPath >> F.mapM_ renderTrail trs
+clipCanv pths = mapM_ renderPath pths >> G.clip
+
+renderPath :: Path R2 -> G.Render ()
+renderPath (Path trs) = G.newPath >> F.mapM_ renderTrail trs
         
 canvasTransf :: Transformation R2 -> G.Render ()
 canvasTransf t = do
@@ -100,14 +109,17 @@ canvasTransf t = do
 
 instance Renderable (Segment Closed R2) Canvas where
   render _ seg = C $ renderSeg seg
+                 >>  return defRenderInfo
 
 instance Renderable (Trail R2) Canvas where
-    render :: Canvas -> (Trail R2) -> Render Canvas (V (Trail R2))
     render c = render c . pathFromTrail
-        
+
 instance Renderable (Path R2) Canvas where
-  render _ (Path trs) = C $ 
-      G.newPath >> F.mapM_ renderTrail trs
+  render _ p@(Path trs) = C $ do
+      renderPath p      
+      if any (isLine . unLoc) trs
+          then return $ I True
+          else return defRenderInfo
       
 renderTrail :: Located (Trail R2) -> G.Render ()
 renderTrail (viewLoc -> (unp2 -> (x,y), t)) = do
