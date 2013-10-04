@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Graphics.Rendering.GHCJS
   ( Render(..)
+  , RenderState(..)
   , Context(..)
   , doRender
 
@@ -17,8 +18,11 @@ module Graphics.Rendering.GHCJS
   , getFill
   , fillRule
   , fillText
-  , strokeText
+  , getIgnoreFill
+  , setIgnoreFill
   , transform
+  , strokeText
+  , setTransform
   , save
   , restore
   , translate
@@ -30,9 +34,13 @@ module Graphics.Rendering.GHCJS
   , fillColor
   , lineWidth
   , lineCap
+  , fromFontSlant
+  , fromFontWeight
+  , measureText
   , lineJoin
   , globalAlpha
-  , withStyle
+  , tempState
+  , colorToJSRGBA
   ) where
 
 import           Control.Monad.Reader
@@ -41,39 +49,53 @@ import           Data.Colour
 import           Data.Colour.SRGB.Linear
 import           Data.NumInstances       ()
 import           Data.Maybe
-import           Data.Text               (Text)
+import           Data.Text               (Text, unpack)
+import qualified Data.Text            as T
 import           Diagrams.Attributes     (Color (..), Dashing (..),
                                           LineCap (..), LineJoin (..),
                                           colorToRGBA)
 import           Diagrams.TwoD.Path      (FillRule(..))
+import qualified Diagrams.TwoD.Text   as D
 
 import           JavaScript.Canvas       (Context)
 import qualified JavaScript.Canvas       as C
 
-import Debug.Trace
-
-type Render = StateT ((Double,Double), Maybe FillRule) (ReaderT Context IO)
+data RenderState = RenderState
+-- | Did we see any lines in the most recent path (as opposed to loops)? If
+-- so then we should ignore any fill attribute because diagrams-lib
+-- separates lines and loops into separate path primitives so we don't have
+-- to worry about seeing them in the same path
+    { ignoreFill :: Bool
+    , currentLocation :: (Double, Double)
+    , currentFillRule :: Maybe FillRule
+    , fontSize :: Double
+    }
+type Render = StateT RenderState (ReaderT Context IO)
 
 doRender :: Context -> Render a -> IO a
-doRender c r = runReaderT (evalStateT r ((0,0), Nothing)) c
+doRender c r = runReaderT (evalStateT r startState) c
+    where startState = RenderState False (0, 0) Nothing 10
 
+ctx :: (Context -> IO a) -> Render a
 ctx f = lift ask >>= liftIO . f
 
 move :: (Double,Double) -> Render ()
-move p = do
-    (_, fr) <- get
-    put (p, fr)
+move p = modify $ \state -> state {currentLocation=p}
 
 at :: Render (Double,Double)
-at = fmap fst get
+at = fmap currentLocation get
 
 getFill :: Render (Maybe FillRule)
-getFill = fmap snd get
+getFill = fmap currentFillRule get
 
 setFill :: FillRule -> Render ()
-setFill fr = do
-    (p, _) <- get
-    put (p, Just fr)
+setFill fr = modify $ \state -> state {currentFillRule=Just fr}
+
+getIgnoreFill :: Render Bool
+getIgnoreFill = fmap ignoreFill get
+
+setIgnoreFill :: Bool -> Render ()
+setIgnoreFill ignore = modify$ \state -> state {ignoreFill=ignore}
 
 newPath :: Render ()
 newPath = ctx C.beginPath
@@ -99,7 +121,8 @@ relLineTo x y = do
   ctx (C.lineTo x' y')
   move p'
 
-relCurveTo :: Double -> Double -> Double -> Double -> Double -> Double -> Render ()
+relCurveTo :: Double -> Double -> Double -> Double -> Double -> Double
+           -> Render ()
 relCurveTo ax ay bx by cx cy = do
   p <- at
   let [(ax',ay'),(bx',by'),(cx',cy')] = map (p+) [(ax,ay),(bx,by),(cx,cy)]
@@ -107,18 +130,10 @@ relCurveTo ax ay bx by cx cy = do
   move (cx',cy')
 
 fillText :: Text -> Render ()
-fillText txt = do
-    save
-    ctx (C.setTransform 1 0 0 1 0 0)
-    setFont "10px Arial"
-    (x,y) <- at
-    ctx (C.fillText txt x y)
-    restore
+fillText txt = ctx (C.fillText txt 0 0)
 
 strokeText :: Text -> Render ()
-strokeText txt = do
-    (x,y) <- at
-    ctx (C.strokeText txt x y)
+strokeText txt = ctx (C.strokeText txt 0 0)
 
 stroke :: Render ()
 stroke = ctx C.stroke
@@ -136,6 +151,9 @@ save = ctx C.save
 restore :: Render ()
 restore = ctx C.restore
 
+tempState :: Render () -> Render ()
+tempState r = save >> r >> restore
+
 colorToJSRGBA :: Color c => c -> (Int, Int, Int, Double)
 colorToJSRGBA c = (f r, f g, f b, alphaChannel c')
   where
@@ -152,23 +170,28 @@ colorToJSRGBA c = (f r, f g, f b, alphaChannel c')
    alphaToColour ac | alphaChannel ac == 0 = ac `over` black
                     | otherwise = darken (recip (alphaChannel ac)) (ac `over` black)
 
-transform :: Double -> Double -> Double -> Double -> Double -> Double -> Render ()
+transform :: Double -> Double -> Double -> Double -> Double -> Double
+          -> Render ()
 transform ax ay bx by tx ty = ctx (C.transform ax ay bx by tx ty)
+
+setTransform :: Double -> Double -> Double -> Double -> Double -> Double
+             -> Render ()
+setTransform ax ay bx by tx ty = ctx (C.setTransform ax ay bx by tx ty)
 
 strokeColor :: (Color c) => c -> Render ()
 strokeColor c = ctx (C.strokeStyle r g b a)
-  where (r,g,b,a) = colorToJSRGBA c
+    where (r,g,b,a) = colorToJSRGBA c
 
 setFont :: Text -> Render ()
 setFont f = ctx (C.font f)
 
 fillColor :: (Color c) => c -> Render ()
 fillColor c = ctx (C.fillStyle r g b a)
-  where (r,g,b,a) = colorToJSRGBA c
+    where (r,g,b,a) = colorToJSRGBA c
 
 dashing :: Dashing -> Render ()
-dashing (Dashing a o) =  ctx (C.setLineDash a)
-                      >> ctx (C.lineDashOffset o)
+dashing (Dashing a o) = ctx (C.setLineDash a)
+                     >> ctx (C.lineDashOffset o)
 
 lineWidth :: Double -> Render ()
 lineWidth w | abs w < 0.00001 = ctx (C.lineWidth 0.00001)
@@ -180,6 +203,18 @@ lineCap lc = ctx (C.lineCap $ n lc)
     n LineCapButt  = C.LineCapButt
     n LineCapRound = C.LineCapRound
     n _            = C.LineCapSquare
+
+fromFontSlant :: D.FontSlant -> T.Text
+fromFontSlant D.FontSlantNormal = "" -- " normal "
+fromFontSlant D.FontSlantItalic = " italic "
+fromFontSlant D.FontSlantOblique = " oblique "
+
+fromFontWeight :: D.FontWeight -> T.Text
+fromFontWeight D.FontWeightNormal = "" -- " normal "
+fromFontWeight D.FontWeightBold = " bold "
+
+measureText :: Text -> Render Double
+measureText t = ctx (C.measureText t)
 
 lineJoin :: LineJoin -> Render ()
 lineJoin lj = ctx (C.lineJoin $ n lj)
@@ -199,13 +234,3 @@ scale x y = ctx (C.scale x y)
 
 rotate :: Double -> Render ()
 rotate t = ctx (C.rotate t)
-
-withStyle :: Render () -> Render () -> Render Bool -> Render ()
-withStyle t s r = do
-  ctx C.save
-  ignoreFill <- r
-  t >> s
-  stroke
-  unless ignoreFill fill
-  ctx C.restore
-
