@@ -15,18 +15,19 @@ module Diagrams.Backend.GHCJS
   , Options(..)
   ) where
 
+import           Control.Lens         hiding ((#))
 import           Control.Monad        (when)
+import           Control.Monad.Reader
+import           Control.Monad.State
 import qualified Data.Foldable        as F
 import           Data.Maybe           (catMaybes, maybe, isJust, fromJust)
 import           Data.Monoid          ((<>))
 import           Data.Typeable
 import qualified Data.Text            as T
-import           Control.Monad.Reader
-import           Control.Monad.State
 
-import           Diagrams.Prelude     hiding ((<>))
+import           Diagrams.Prelude     hiding ((<>), view)
 import           Diagrams.TwoD.Adjust (adjustDia2D)
-import           Diagrams.TwoD.Path   (getFillRule, getClip, Clip)
+import           Diagrams.TwoD.Path   (getFillRule, Clip(..))
 import           Diagrams.TwoD.Text   (getFont, getFontSize)
 import qualified Diagrams.TwoD.Text   as D
 import           Diagrams.Segment
@@ -107,7 +108,7 @@ handleFont s = Just $ G.setFont $
         fontWeight  = maybe D.FontWeightNormal D.getFontWeight fontWeight'
 
 handleClipping :: Style v -> Maybe (G.Render ())
-handleClipping s = (clipCanv . getClip) `fmap` getAttr s
+handleClipping s = (clipCanv . view (unwrapping Clip)) `fmap` getAttr s
 
 canvasStyle :: Bool -> Style v -> G.Render ()
 canvasStyle ignoreFill s = foldr (>>) (return ()) . catMaybes $
