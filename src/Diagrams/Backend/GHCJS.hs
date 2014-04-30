@@ -6,7 +6,6 @@
            , DeriveDataTypeable
            , ViewPatterns
            , OverloadedStrings
-           , TypeHoles
            , InstanceSigs
   #-}
 
@@ -108,7 +107,7 @@ handleFont s = Just $ G.setFont $
         fontWeight  = maybe D.FontWeightNormal D.getFontWeight fontWeight'
 
 handleClipping :: Style v -> Maybe (G.Render ())
-handleClipping s = (clipCanv . view (unwrapping Clip)) `fmap` getAttr s
+handleClipping s = (clipCanv . \(Clip x) -> x) `fmap` getAttr s
 
 canvasStyle :: Bool -> Style v -> G.Render ()
 canvasStyle ignoreFill s = foldr (>>) (return ()) . catMaybes $
