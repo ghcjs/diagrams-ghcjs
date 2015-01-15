@@ -14,17 +14,23 @@ module Diagrams.Backend.GHCJS
   , Options(..)
   ) where
 
+import Prelude hiding
+    (foldl, foldl1, foldr, foldr1
+    , mapM, mapM_, sequence, sequence_
+    , head, tail, last, init, map, (++), (!!), FilePath, lines)
+
 import           Control.Lens         hiding ((#))
 import           Control.Monad        (when)
-import           Control.Monad.Reader
-import           Control.Monad.State
-import qualified Data.Foldable        as F
-import           Data.Maybe           (catMaybes, maybe, isJust, fromJust)
-import           Data.Monoid          ((<>))
+import           Control.Monad.Reader ()
+import           Control.Monad.State (get)
+import Data.Foldable
+import           Data.Maybe           -- (catMaybes, maybe, isJust, fromJust, fromMaybe)
+import           Data.Tree                    (Tree(Node))
 import           Data.Typeable
 import qualified Data.Text            as T
 
-import           Diagrams.Prelude     hiding ((<>), view)
+import           Diagrams.Prelude     hiding (view)
+import Diagrams.Core.Types
 import           Diagrams.TwoD.Adjust (adjustDia2D)
 import           Diagrams.TwoD.Path   (getFillRule, Clip(..))
 import           Diagrams.TwoD.Text   (getFont, getFontSize)
@@ -55,25 +61,40 @@ instance Backend Canvas R2 where
             , context      :: G.Context    -- ^ drawing context to render to
             }
 
-    withStyle _ s t (C r) = C $ G.tempState $ do
-        clearPath  -- path is not part of the drawing state :/
-        canvasMiscStyle s
-        G.setIgnoreFill False
-        r
-        ignoreFill <- G.getIgnoreFill
-        canvasTransf t
-        canvasStyle ignoreFill s
-        G.stroke
+    -- doRender _ (CanvasOptions _ c) (C r) = G.doRender c r
 
-    doRender _ (CanvasOptions _ c) (C r) = G.doRender c r
+    renderRTree :: Canvas -> Options Canvas R2 -> RTree Canvas R2 Annotation
+                        -> Result Canvas R2
+    renderRTree _canvas (CanvasOptions _ c) rt = G.render c r where
+      (C r) = renderFromRTree rt
 
-    adjustDia c opts d = adjustDia2D canvasSize setCanvasSize c opts
-                         -- (d # reflectY # fcA transparent # lw 0.01)
-                         (d # reflectY)
-        where setCanvasSize sz o = o { canvasSize = sz }
+    adjustDia c opts d = adjustDia2D size c opts (d # reflectY)
+        where
+          setCanvasSize o sz = o { canvasSize = sz }
+          size :: Lens' (Options Canvas R2) SizeSpec2D
+          size = lens canvasSize setCanvasSize
+
+renderFromRTree :: RTree Canvas R2 Annotation -> Render Canvas R2
+-- renderFromRTree = C $ return ()
+renderFromRTree (Node (RPrim p ) _) = render Canvas p
+renderFromRTree (Node (RStyle sty) rs) = C . G.tempState $ do
+    clearPath  -- path is not part of the drawing state :/
+    canvasMiscStyle sty
+    G.setIgnoreFill False
+    runC $ foldMap renderFromRTree rs
+    ignoreFill <- G.getIgnoreFill
+    canvasStyle ignoreFill sty
+    G.stroke
 
 clearPath :: G.Render()
 clearPath = G.newPath >> G.closePath
+
+runC :: Render Canvas R2 -> G.Render ()
+runC (C r) = r
+
+-- | Get an accumulated style attribute from the render monad state.
+getStyleAttrib :: AttributeClass a => (a -> b) -> G.Render (Maybe b)
+getStyleAttrib f = fmap f . getAttr . G.accumStyle <$> get
 
 renderC :: (Renderable a Canvas, V a ~ R2) => a -> G.Render ()
 renderC a = case (render Canvas a) of C r -> r
@@ -81,30 +102,31 @@ renderC a = case (render Canvas a) of C r -> r
 canvasMiscStyle :: Style v -> G.Render ()
 canvasMiscStyle s = sequence_ $ catMaybes
     [ handleClipping s
-    , handleFont s
+    -- , handleFont s
     , handle fColor
     , handle fRule
     ] where
         handle :: AttributeClass a => (a -> G.Render ()) -> Maybe (G.Render ())
         handle f = f `fmap` getAttr s
-        fColor   = G.fillColor   . getFillColor
+        fColor   = G.fillColor . colorFromTexture . getFillTexture
         fRule    = G.setFill     . getFillRule
 
-handleFont s = Just $ G.setFont $
-    G.fromFontSlant fontSlant
-    <> G.fromFontWeight fontWeight
-    <> T.pack (show fontSize)
-    <> "px "
-    <> (T.pack fontFamily)
-    where
-        fontFamily' = getAttr s :: Maybe (D.Font)
-        fontSize'   = getAttr s :: Maybe (D.FontSize)
-        fontSlant'  = getAttr s :: Maybe (D.FontSlantA)
-        fontWeight' = getAttr s :: Maybe (D.FontWeightA)
-        fontFamily  = maybe "Arial" getFont fontFamily'
-        fontSize    = maybe 10 getFontSize fontSize'
-        fontSlant   = maybe D.FontSlantNormal D.getFontSlant fontSlant'
-        fontWeight  = maybe D.FontWeightNormal D.getFontWeight fontWeight'
+-- handleFont :: Style v -> G.Render ()
+-- handleFont s = G.setFont $
+--     G.fromFontSlant fontSlant
+--     <> G.fromFontWeight fontWeight
+--     <> T.pack (show fontSize)
+--     <> "px "
+--     <> (T.pack fontFamily)
+--     where
+--         fontFamily' = getAttr s :: Maybe (D.Font)
+--         fontSize'   = getAttr s :: Maybe (D.FontSize)
+--         fontSlant'  = getAttr s :: Maybe (D.FontSlantA)
+--         fontWeight' = getAttr s :: Maybe (D.FontWeightA)
+--         fontFamily  = maybe "Arial" getFont fontFamily'
+--         fontSize    = maybe (Output 10) getFontSize fontSize'
+--         fontSlant   = maybe D.FontSlantNormal D.getFontSlant fontSlant'
+--         fontWeight  = maybe D.FontWeightNormal D.getFontWeight fontWeight'
 
 handleClipping :: Style v -> Maybe (G.Render ())
 handleClipping s = (clipCanv . \(Clip x) -> x) `fmap` getAttr s
@@ -122,20 +144,27 @@ canvasStyle ignoreFill s = foldr (>>) (return ()) . catMaybes $
     ] where
         handle :: AttributeClass a => (a -> G.Render ()) -> Maybe (G.Render ())
         handle f = f `fmap` getAttr s
-        lColor   = G.strokeColor . getLineColor
-        fColor s = (G.fillColor   $ getFillColor s) >> G.fill
-        lWidth   = G.lineWidth   . getLineWidth
+        lColor   = G.strokeColor . colorFromTexture . getLineTexture
+        fColor s = (G.fillColor . colorFromTexture . getFillTexture $ s) >> G.fill
+        lWidth   = G.lineWidth   . fromOutput . getLineWidth
         lCap     = G.lineCap     . getLineCap
         lJoin    = G.lineJoin    . getLineJoin
         opacity_ = G.globalAlpha . getOpacity
         fRule    = G.setFill     . getFillRule
         dashing_ = G.dashing     . getDashing
 
+-- TODO handle gradients properly
+colorFromTexture :: Texture -> SomeColor
+colorFromTexture (SC c) = c
+-- For gradients, just pick the first color we can find
+colorFromTexture (LG g) = g ^?! lGradStops . ix 0 . stopColor
+colorFromTexture (RG g) = g ^?! rGradStops . ix 0 . stopColor
+
 clipCanv :: [Path R2] -> G.Render ()
 clipCanv pths = mapM_ renderPath pths >> G.clip
 
 renderPath :: Path R2 -> G.Render ()
-renderPath (Path trs) = G.newPath >> F.mapM_ renderTrail trs
+renderPath (Path trs) = G.newPath >> mapM_ renderTrail trs
 
 canvasTransf :: Transformation R2 -> G.Render ()
 canvasTransf = uncurry6 G.setTransform . getMatrix
@@ -174,19 +203,46 @@ instance Renderable (Path R2) Canvas where
   -- with an absolute starting point.
   -- "Note that paths with multiple trails are necessary for being able to
   -- draw e.g. filled objects with holes in them."
-  render _ (Path trs) = C $ G.newPath >> F.mapM_ renderTrail trs
+  render _ (Path trs) = C $ G.newPath >> mapM_ renderTrail trs
+
+showFontJS :: D.FontWeight -> D.FontSlant -> Double -> String -> T.Text
+showFontJS wgt slant sz fnt = T.concat [a, " ", b, " ", c, " ", d]
+  where
+    a = case wgt of
+          D.FontWeightNormal -> ""
+          D.FontWeightBold   -> "bold"
+    b = case slant of
+          D.FontSlantNormal  -> ""
+          D.FontSlantItalic  -> "italic"
+          D.FontSlantOblique -> "oblique"
+    c = T.concat [T.pack $ show sz, "pt"]
+    d = T.pack fnt
 
 instance Renderable D.Text Canvas where
-    render _ (D.Text tt a str) = C $ G.tempState $ do
-        uncurry6 G.setTransform $ getMatrix $ tt <> reflectionY
-        -- TODO(joel) - major hack here
-        fontSz <- (/10) <$> G.fontSize <$> get
-
-        (refX, refY) <- case a of
+    render _ (D.Text tt tn al str) = C $ G.tempState $ do
+        -- handle font size
+        isLocal <- fromMaybe True <$> getStyleAttrib D.getFontSizeIsLocal
+        sz <- fromMaybe 12 <$> getStyleAttrib (fromOutput . getFontSize)
+        let fSize = if isLocal
+                    then avgScale tt * sz
+                    else sz
+        -- font description
+        ff <- fromMaybe "Calibri" <$> getStyleAttrib getFont
+        slant   <- fromMaybe D.FontSlantNormal <$> getStyleAttrib D.getFontSlant
+        fw      <- fromMaybe D.FontWeightNormal <$> getStyleAttrib D.getFontWeight
+        G.setFont $ showFontJS fw slant fSize ff
+        -- color
+        fill <- fromMaybe (SC (SomeColor (black :: Colour Double))) <$>
+                getStyleAttrib getFillTexture
+        G.fillColor $ colorFromTexture fill
+        -- text alignment & positioning
+        uncurry6 G.setTransform $ getMatrix $ tn <> reflectionY
+        (refX, refY) <- case al of
             D.BoxAlignedText xt yt -> do
-                tExt <- G.measureText $ T.pack str
-                return (lerp 0 tExt xt, lerp (-fontSz/4) fontSz yt)
-
+                -- TODO(joel) - major hack here
+                width <- G.measureText $ T.pack str
+                height <- (/10) <$> G.fontSize <$> get
+                return (lerp 0 width xt, lerp (-height/4) height yt)
                 -- text metrics are in the canvas v5 standard, but not yet
                 -- implemented
                 -- http://lists.whatwg.org/pipermail/whatwg-whatwg.org/2012-March/035239.html

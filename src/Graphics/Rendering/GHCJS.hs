@@ -3,7 +3,7 @@ module Graphics.Rendering.GHCJS
   ( Render(..)
   , RenderState(..)
   , Context(..)
-  , doRender
+  , render
 
   , newPath
   , moveTo
@@ -49,13 +49,18 @@ import           Data.Colour
 import           Data.Colour.SRGB.Linear
 import           Data.NumInstances       ()
 import           Data.Maybe
+import Data.Monoid
 import           Data.Text               (Text, unpack)
 import qualified Data.Text            as T
-import           Diagrams.Attributes     (Color (..), Dashing (..),
+
+import           Diagrams.Attributes     (Color (..),
                                           LineCap (..), LineJoin (..),
                                           colorToRGBA)
+import Diagrams.Core (fromOutput, Style)
+import Diagrams.TwoD.Attributes (Dashing (..))
 import           Diagrams.TwoD.Path      (FillRule(..))
 import qualified Diagrams.TwoD.Text   as D
+import Diagrams.TwoD.Types (R2)
 
 import           JavaScript.Canvas       (Context)
 import qualified JavaScript.Canvas       as C
@@ -69,12 +74,13 @@ data RenderState = RenderState
     , currentLocation :: (Double, Double)
     , currentFillRule :: Maybe FillRule
     , fontSize :: Double
+    , accumStyle :: Style R2
     }
 type Render = StateT RenderState (ReaderT Context IO)
 
-doRender :: Context -> Render a -> IO a
-doRender c r = runReaderT (evalStateT r startState) c
-    where startState = RenderState False (0, 0) Nothing 10
+render :: Context -> Render a -> IO a
+render c r = runReaderT (evalStateT r startState) c
+    where startState = RenderState False (0, 0) Nothing 10 mempty
 
 ctx :: (Context -> IO a) -> Render a
 ctx f = lift ask >>= liftIO . f
@@ -190,8 +196,8 @@ fillColor c = ctx (C.fillStyle r g b a)
     where (r,g,b,a) = colorToJSRGBA c
 
 dashing :: Dashing -> Render ()
-dashing (Dashing a o) = ctx (C.setLineDash a)
-                     >> ctx (C.lineDashOffset o)
+dashing (Dashing a o) = ctx (C.setLineDash (map fromOutput a))
+                     >> ctx (C.lineDashOffset (fromOutput o))
 
 lineWidth :: Double -> Render ()
 lineWidth w | abs w < 0.00001 = ctx (C.lineWidth 0.00001)
