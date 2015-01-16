@@ -8,3 +8,5 @@ cabal-dev
 *.js_o
 *.js_hi
 *.jsexe
+*~
+/Setup
