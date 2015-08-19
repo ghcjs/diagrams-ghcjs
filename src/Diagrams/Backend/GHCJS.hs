@@ -42,6 +42,9 @@ import qualified Graphics.Rendering.GHCJS as G
 -- rendering engine.
 data Canvas = Canvas deriving Typeable
 
+type instance V Canvas = V2
+type instance N Canvas = Double
+
 instance Monoid (Render Canvas V2 Double) where
   mempty  = C $ return ()
   (C c1) `mappend` (C c2) = C (c1 >> c2)
