@@ -47,20 +47,19 @@ import           Control.Monad.Reader
 import           Control.Monad.State
 import           Data.Colour
 import           Data.Colour.SRGB.Linear
-import           Data.NumInstances       ()
 import           Data.Maybe
-import Data.Monoid
+import           Data.Monoid
+import           Data.NumInstances       ()
 import           Data.Text               (Text, unpack)
-import qualified Data.Text            as T
+import qualified Data.Text               as T
 
-import           Diagrams.Attributes     (Color (..),
-                                          LineCap (..), LineJoin (..),
-                                          colorToRGBA)
-import Diagrams.Core (fromOutput, Style)
-import Diagrams.TwoD.Attributes (Dashing (..))
-import           Diagrams.TwoD.Path      (FillRule(..))
-import qualified Diagrams.TwoD.Text   as D
-import Diagrams.TwoD.Types (R2)
+import           Diagrams.Attributes     (Color (..), LineCap (..),
+                                          LineJoin (..), colorToRGBA)
+import           Diagrams.Attributes     (Dashing (..))
+import           Diagrams.Core           (Style)
+import           Diagrams.TwoD.Path      (FillRule (..))
+import qualified Diagrams.TwoD.Text      as D
+import           Linear                  (V2)
 
 import           JavaScript.Canvas       (Context)
 import qualified JavaScript.Canvas       as C
@@ -70,11 +69,11 @@ data RenderState = RenderState
 -- so then we should ignore any fill attribute because diagrams-lib
 -- separates lines and loops into separate path primitives so we don't have
 -- to worry about seeing them in the same path
-    { ignoreFill :: Bool
+    { ignoreFill      :: Bool
     , currentLocation :: (Double, Double)
     , currentFillRule :: Maybe FillRule
-    , fontSize :: Double
-    , accumStyle :: Style R2
+    , fontSize        :: Double
+    , accumStyle      :: Style V2 Double
     }
 type Render = StateT RenderState (ReaderT Context IO)
 
@@ -195,9 +194,9 @@ fillColor :: (Color c) => c -> Render ()
 fillColor c = ctx (C.fillStyle r g b a)
     where (r,g,b,a) = colorToJSRGBA c
 
-dashing :: Dashing -> Render ()
-dashing (Dashing a o) = ctx (C.setLineDash (map fromOutput a))
-                     >> ctx (C.lineDashOffset (fromOutput o))
+dashing :: Dashing Double -> Render ()
+dashing (Dashing a o) = ctx (C.setLineDash a)
+                     >> ctx (C.lineDashOffset o)
 
 lineWidth :: Double -> Render ()
 lineWidth w | abs w < 0.00001 = ctx (C.lineWidth 0.00001)
