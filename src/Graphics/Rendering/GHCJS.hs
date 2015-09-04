@@ -61,8 +61,12 @@ import           Diagrams.TwoD.Path      (FillRule (..))
 import qualified Diagrams.TwoD.Text      as D
 import           Linear                  (V2)
 
-import           JavaScript.Canvas       (Context)
-import qualified JavaScript.Canvas       as C
+import           Data.JSString.Text      (textToJSString)
+
+import           GHCJS.Marshal.Pure
+import qualified JavaScript.Array        as JSA
+import           JavaScript.Web.Canvas   (Context)
+import qualified JavaScript.Web.Canvas   as C
 
 data RenderState = RenderState
 -- | Did we see any lines in the most recent path (as opposed to loops)? If
@@ -135,10 +139,10 @@ relCurveTo ax ay bx by cx cy = do
   move (cx',cy')
 
 fillText :: Text -> Render ()
-fillText txt = ctx (C.fillText txt 0 0)
+fillText txt = ctx (C.fillText (textToJSString txt) 0 0)
 
 strokeText :: Text -> Render ()
-strokeText txt = ctx (C.strokeText txt 0 0)
+strokeText txt = ctx (C.strokeText (textToJSString txt) 0 0)
 
 stroke :: Render ()
 stroke = ctx C.stroke
@@ -188,14 +192,14 @@ strokeColor c = ctx (C.strokeStyle r g b a)
     where (r,g,b,a) = colorToJSRGBA c
 
 setFont :: Text -> Render ()
-setFont f = ctx (C.font f)
+setFont f = ctx (C.font $ textToJSString f)
 
 fillColor :: (Color c) => c -> Render ()
 fillColor c = ctx (C.fillStyle r g b a)
     where (r,g,b,a) = colorToJSRGBA c
 
 dashing :: Dashing Double -> Render ()
-dashing (Dashing a o) = ctx (C.setLineDash a)
+dashing (Dashing a o) = ctx (C.setLineDash $ JSA.fromList (map pToJSRef a))
                      >> ctx (C.lineDashOffset o)
 
 lineWidth :: Double -> Render ()
@@ -219,7 +223,7 @@ fromFontWeight D.FontWeightNormal = "" -- " normal "
 fromFontWeight D.FontWeightBold = " bold "
 
 measureText :: Text -> Render Double
-measureText t = ctx (C.measureText t)
+measureText t = ctx (C.measureText $ textToJSString t)
 
 lineJoin :: LineJoin -> Render ()
 lineJoin lj = ctx (C.lineJoin $ n lj)
