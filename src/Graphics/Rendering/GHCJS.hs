@@ -199,7 +199,7 @@ fillColor c = ctx (C.fillStyle r g b a)
     where (r,g,b,a) = colorToJSRGBA c
 
 dashing :: Dashing Double -> Render ()
-dashing (Dashing a o) = ctx (C.setLineDash $ JSA.fromList (map pToJSRef a))
+dashing (Dashing a o) = ctx (C.setLineDash $ JSA.fromList (map pToJSVal a))
                      >> ctx (C.lineDashOffset o)
 
 lineWidth :: Double -> Render ()
