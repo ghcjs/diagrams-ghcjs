@@ -12,7 +12,7 @@ module Tests
 import           Data.Typeable
 import           Diagrams.Coordinates ((^&))
 import           Diagrams.Core.Points
-import           Diagrams.Prelude hiding (connect)
+import           Diagrams.Prelude     hiding (connect)
 import           Diagrams.TwoD.Text
 
 -----------------------------------------------------------------------
