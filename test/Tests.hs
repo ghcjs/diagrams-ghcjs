@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE TypeFamilies              #-}
 
@@ -10,6 +11,7 @@ module Tests
         , examples
         ) where
 
+import qualified Data.JSString        as J
 import           Data.Typeable
 import           Diagrams.Coordinates ((^&))
 import           Diagrams.Core.Points
@@ -19,7 +21,7 @@ import           Diagrams.TwoD.Text
 -----------------------------------------------------------------------
 
 data Test = Test
-        String -- ^ the name of the test
+        J.JSString -- ^ the name of the test
         (forall canvas .
                 ( OrderedField (N canvas)
                 , Renderable (Path (V canvas) (N canvas)) canvas

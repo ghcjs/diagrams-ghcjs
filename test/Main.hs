@@ -4,17 +4,18 @@ module Main where
 
 import           Control.Monad
 import           Control.Monad.Trans
-import           Data.Monoid              ((<>))
-import qualified Data.Text                as T
-import           Diagrams.Backend.GHCJS
-import           Diagrams.Backend.GHCJS
-import           Diagrams.Prelude         hiding ((<>))
+import           Data.Coerce
+import           Data.Monoid                    ((<>))
+import qualified Data.Text                      as T
+import           Diagrams.Backend.GHCJS         as D
+import           Diagrams.Prelude               hiding ((<>))
 import           GHCJS.Foreign
 import           GHCJS.Types
-import qualified Graphics.Rendering.GHCJS as G
-import           JavaScript.Canvas        (Context, getContext)
-import qualified JavaScript.Canvas        as C
+import qualified Graphics.Rendering.GHCJS       as G
 import           JavaScript.JQuery
+import           JavaScript.Web.Canvas          (Context, getContext)
+import qualified JavaScript.Web.Canvas          as C
+import qualified JavaScript.Web.Canvas.Internal as C
 import           Tests
 
 import           Debug.Trace
@@ -31,14 +32,15 @@ mkContext nm = do
             <> "<td valign=\"top\">" <> img <> "</td>"
             <> "<td valign=\"top\">" <> canvas <> "</td>") testarea
 
-    getContext =<< indexArray 0 . castRef =<< select ("#" <> nm)
+    c <- select "#dia"
+    getContext (coerce c)
 
-renderDia' :: Context -> Diagram Canvas R2 -> IO ()
-renderDia' c = renderDia Canvas (CanvasOptions (Dims 200 200) c)
+renderDia' :: C.Context -> Diagram D.Canvas -> IO ()
+renderDia' c = renderDia D.Canvas (CanvasOptions (dims2D 200 200) c)
 
 main = do
     body <- select "#main"
     forM_ examples $ \(Test testName dia) -> do
-        ctx <- mkContext (T.pack testName)
+        ctx <- mkContext testName
         renderDia' ctx dia
     putStrLn "end"
