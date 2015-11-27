@@ -33,3 +33,17 @@ Library
                        colour >= 2.3 && < 2.4,
                        text >= 0.11 && < 1.3,
                        ghcjs-base
+
+executable tests
+  main-is: Main.hs
+  other-modules: Tests
+  hs-source-dirs: test
+  build-depends: base >= 4.2 && < 4.9
+               , diagrams-lib
+               , diagrams-core
+               , text
+               , mtl
+               , diagrams-ghcjs
+               , ghcjs-base
+               , ghcjs-jquery
+  default-language:    Haskell2010
