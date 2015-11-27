@@ -9,17 +9,15 @@ setup-info:
             ghcjs-0.2.0.20151029_ghc-7.10.2:
                     url: "https://github.com/nrolland/ghcjs/releases/download/v0.2.0.20151029/ghcjs-0.2.0.20151029.tar.gz"
 
-# resolver: ghcjs-0.2.0.20151001_ghc-7.10.2
-# compiler-check: match-exact
-# setup-info:
-#   ghcjs:
-#     source:
-#       ghcjs-0.2.0.20151001_ghc-7.10.2:
-#         url: "https://github.com/fizruk/ghcjs/releases/download/v0.2.0.20151001/gh
-
 # Local packages, usually specified by relative directory name
 packages:
   - '.'
+  - location:
+      git: https://github.com/ghcjs/ghcjs-jquery
+      commit: 7b25bff88c05d46b7fbfc3ae26106d112036c252
+  - location:
+      git: https://github.com/ghcjs/ghcjs-base
+      commit: 23b1311a98c7981c7b98ac7d37a6fa9456c893d5
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps:
@@ -67,6 +65,13 @@ extra-deps:
   - unix-compat-0.4.1.4
   - void-0.7.1
   - zlib-0.6.1.1
+  - data-default-0.5.3
+  - data-default-instances-base-0.0.1
+  - data-default-instances-containers-0.0.1
+  - data-default-instances-dlist-0.0.1
+  - data-default-instances-old-locale-0.0.1
+  # for tests
+  - ghcjs-dom-0.2.3.0
   
 # Override default flag values for local packages and extra-deps
 flags: {}
