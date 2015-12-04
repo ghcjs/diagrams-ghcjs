@@ -15,9 +15,6 @@ packages:
   - location:
       git: https://github.com/ghcjs/ghcjs-jquery
       commit: 7b25bff88c05d46b7fbfc3ae26106d112036c252
-  - location:
-      git: https://github.com/ghcjs/ghcjs-base
-      commit: 23b1311a98c7981c7b98ac7d37a6fa9456c893d5
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps:
