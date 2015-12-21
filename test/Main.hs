@@ -3,15 +3,9 @@
 module Main where
 
 import           Control.Monad
-import           Control.Monad.Trans
-import           Data.Coerce
 import           Data.Monoid                    ((<>))
-import qualified Data.Text                      as T
 import           Diagrams.Backend.GHCJS         as D
 import           Diagrams.Prelude               hiding ((<>))
-import           GHCJS.Foreign
-import           GHCJS.Types
-import qualified Graphics.Rendering.GHCJS       as G
 import           JavaScript.Array               as J
 import           JavaScript.JQuery              as JQ
 import qualified JavaScript.Web.Canvas          as C
