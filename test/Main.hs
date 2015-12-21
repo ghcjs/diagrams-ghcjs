@@ -12,11 +12,12 @@ import           Diagrams.Prelude               hiding ((<>))
 import           GHCJS.Foreign
 import           GHCJS.Types
 import qualified Graphics.Rendering.GHCJS       as G
-import           JavaScript.JQuery
-import           JavaScript.Web.Canvas          (Context, getContext)
+import           JavaScript.Array               as J
+import           JavaScript.JQuery              as JQ
 import qualified JavaScript.Web.Canvas          as C
 import qualified JavaScript.Web.Canvas.Internal as C
 import           Tests
+import           Unsafe.Coerce
 
 import           Debug.Trace
 
@@ -27,13 +28,13 @@ mkContext nm = do
     let canvas = "<canvas id=\"" <> nm <> "\" width=\"200\" height=\"200\""
                  <> "style=\"border:1px solid #d3d3d3;\">"
                  <> "</canvas><br />"
-    append ("<tr><td valign=\"top\" bgcolor=\"#eeeeee\">"
+    JQ.append ("<tr><td valign=\"top\" bgcolor=\"#eeeeee\">"
             <> nm <> "</td>"
             <> "<td valign=\"top\">" <> img <> "</td>"
             <> "<td valign=\"top\">" <> canvas <> "</td>") testarea
 
-    c <- select "#dia"
-    getContext (coerce c)
+    c <- select $ "#" <> nm
+    C.getContext . unsafeCoerce . J.index 0 . unsafeCoerce $ c
 
 renderDia' :: C.Context -> Diagram D.Canvas -> IO ()
 renderDia' c = renderDia D.Canvas (CanvasOptions (dims2D 200 200) c)
