@@ -5,5 +5,5 @@ all:
 
 stack:
 	rm -fr *.js* *.o *.hi
-	stack exec -- ghcjs Main.hs
+	STACK_YAML=../stack.yaml stack exec -- ghcjs Main.hs
 	cp test.html Main.jsexe/index.html
