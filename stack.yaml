@@ -1,13 +1,13 @@
 # For more information, see: https://github.com/commercialhaskell/stack/blob/release/doc/yaml_configuration.md
 
 # Specifies the GHC version and set of packages available (e.g., lts-3.5, nightly-2015-09-21, ghc-7.10.2)
-resolver: ghcjs-0.2.0.20151029_ghc-7.10.2
-compiler-check: match-exact
+resolver: ghcjs-0.2.0.20151222_ghc-7.10.2
+compiler-check: match-minor
 setup-info:
   ghcjs:
       source:
-            ghcjs-0.2.0.20151029_ghc-7.10.2:
-                    url: "https://github.com/nrolland/ghcjs/releases/download/v0.2.0.20151029/ghcjs-0.2.0.20151029.tar.gz"
+            ghcjs-0.2.0.20151222_ghc-7.10.2:
+                    url: http://ghcjs.luite.com/master-20151222.tar.gz
 
 # Local packages, usually specified by relative directory name
 packages:
