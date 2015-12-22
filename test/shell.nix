@@ -5,7 +5,6 @@ let
         extension = self: super: rec {
           hsPkg = pkg: version: self.callPackage "/home/bergey/code/nixHaskellVersioned/${pkg}/${version}.nix" {};
           ghcjsCanvas = self.callPackage ../../ghcjs-canvas {};
-          ghcjsJquery =  self.callPackage ../../ghcjs-jquery {};
           diagramsGhcjs = self.callPackage ../. {};
           thisPackage = self.callPackage ./. {};
       };

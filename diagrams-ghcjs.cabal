@@ -45,5 +45,5 @@ executable tests
                , mtl
                , diagrams-ghcjs
                , ghcjs-base
-               , ghcjs-jquery
+               , ghcjs-dom
   default-language:    Haskell2010

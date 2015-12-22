@@ -12,9 +12,6 @@ setup-info:
 # Local packages, usually specified by relative directory name
 packages:
   - '.'
-  - location:
-      git: https://github.com/ghcjs/ghcjs-jquery
-      commit: 7b25bff88c05d46b7fbfc3ae26106d112036c252
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps:
