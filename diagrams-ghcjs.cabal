@@ -13,7 +13,7 @@ Maintainer:          stegeman@gmail.com
 Stability:           Experimental
 Category:            Graphics
 Build-type:          Simple
-Cabal-version:       >=1.8
+Cabal-version:       >=1.10
 Source-repository head
   type:     git
   location: https://github.com/ghcjs/diagrams-ghcjs.git
@@ -33,7 +33,8 @@ Library
                        colour >= 2.3 && < 2.4,
                        text >= 0.11 && < 1.3,
                        ghcjs-base
-
+  default-language:    Haskell2010
+  
 executable tests
   main-is: Main.hs
   other-modules: Tests
