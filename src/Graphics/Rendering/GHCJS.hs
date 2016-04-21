@@ -68,11 +68,11 @@ import qualified JavaScript.Array        as JSA
 import           JavaScript.Web.Canvas   (Context)
 import qualified JavaScript.Web.Canvas   as C
 
-data RenderState = RenderState
 -- | Did we see any lines in the most recent path (as opposed to loops)? If
 -- so then we should ignore any fill attribute because diagrams-lib
 -- separates lines and loops into separate path primitives so we don't have
 -- to worry about seeing them in the same path
+data RenderState = RenderState
     { ignoreFill      :: Bool
     , currentLocation :: (Double, Double)
     , currentFillRule :: Maybe FillRule
